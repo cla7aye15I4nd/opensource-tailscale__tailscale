@@ -16,6 +16,7 @@ import (
 	"tailscale.com/net/traffic"
 	"tailscale.com/syncs"
 	"tailscale.com/tailcfg"
+	"tailscale.com/tailcfg/nodecap"
 	"tailscale.com/tsconst"
 	"tailscale.com/util/clientmetric"
 	"tailscale.com/util/mak"
@@ -217,6 +218,27 @@ func (c *Client) ProbeAllHARouters(ctx context.Context, limit int, timeout time.
 			continue
 		}
 		nodes = append(nodes, rs...) // Note: this introduces duplicates.
+	}
+
+	// Group conn25 connectors by the app they serve, then probe only
+	// connectors for apps served by more than one node, since there is
+	// no point probing a connector when it is the only choice for its app.
+	connectorsByApp := make(map[string][]tailcfg.NodeView)
+	for _, nv := range c.nb.NodeBackend().Peers() {
+		apps, err := tailcfg.UnmarshalNodeCapViewJSON[string](nv.CapMap(), nodecap.Conn25Connector)
+		if err != nil {
+			c.logf("routecheck: bad %s cap on node %v: %v", nodecap.Conn25Connector, nv.ID(), err)
+			continue
+		}
+		for _, app := range apps {
+			connectorsByApp[app] = append(connectorsByApp[app], nv)
+		}
+	}
+	for _, cs := range connectorsByApp {
+		if len(cs) <= 1 {
+			continue
+		}
+		nodes = append(nodes, cs...) // Note: this introduces duplicates.
 	}
 
 	// Sort by Node.ID and deduplicate to avoid double-probing.
