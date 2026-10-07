@@ -984,15 +984,13 @@ var (
 	)
 
 	// metricDNSResponsePassThroughErrorServfail increments servfail returns on
-	// an error writing through a response whose question type is in
-	// passThroughQuestionTypes.
+	// an error writing through a response.
 	metricDNSResponsePassThroughErrorServfail = clientmetric.NewCounter(
 		"conn25_map_dns_response_pass_through_error_servfail",
 	)
 
 	// metricDNSResponsePassedThrough increments when a response for an app
-	// connector domain is written through unrewritten because its question
-	// type is in passThroughQuestionTypes.
+	// connector domain is passed through.
 	metricDNSResponsePassedThrough = clientmetric.NewCounter(
 		"conn25_map_dns_response_passed_through",
 	)
@@ -1044,11 +1042,9 @@ func (c *Conn25) mapDNSResponse(buf []byte) []byte {
 	// There is guaranteed to be at least one matching app, so just take the first one for now
 	appName := appNames[0]
 
-	// Now we know this is a DNS response for a domain we route via a connector,
-	// so we answer it ourselves rather than letting the upstream answer stand.
-	// In every case we write the questions through as they are, and we never
-	// write through the authority or additional sections. What we put in the
-	// answer section depends on the question type, and falls into three cases.
+	// Now we know this is a DNS response for a domain we route via a connector.
+	// What we put in the answer section depends on the question type,
+	// and falls into three cases.
 	//
 	// 1. Rewrite. A and AAAA answers are replaced with magic IPs, and HTTPS
 	//    answers have their ipv4hint/ipv6hint SvcParams stripped.
