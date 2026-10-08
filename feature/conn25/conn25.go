@@ -989,12 +989,6 @@ var (
 		"conn25_map_dns_response_pass_through_error_servfail",
 	)
 
-	// metricDNSResponsePassedThrough increments when a response for an app
-	// connector domain is passed through.
-	metricDNSResponsePassedThrough = clientmetric.NewCounter(
-		"conn25_map_dns_response_passed_through",
-	)
-
 	// metricDNSResponseSkippedAAAA4In6 increments when an AAAA answer for an
 	// app connector domain is dropped because it holds an IPv4-in-IPv6 address.
 	metricDNSResponseSkippedAAAA4In6 = clientmetric.NewCounter(
@@ -1085,7 +1079,6 @@ func (c *Conn25) mapDNSResponse(buf []byte) []byte {
 			c.logf("error passing through dns response of type %v: %v", question.Type, err)
 			return makeServFail(c.logf, hdr, question)
 		}
-		metricDNSResponsePassedThrough.Add(1)
 		return newBuf
 	}
 
