@@ -1248,13 +1248,6 @@ func passThroughResponse(
 		return nil, err
 	}
 
-	// Answers are filtered to the question type plus CNAME, so that an upstream
-	// that puts, say, an A record in the answer section of a TXT response
-	// doesn't get it written through to the client (or into its DNS cache).
-	answers = slices.DeleteFunc(answers, func(r dnsmessage.Resource) bool {
-		return r.Header.Type != qType && r.Header.Type != dnsmessage.TypeCNAME
-	})
-
 	// Message.Pack recomputes the section counts and re-packs each answer
 	// without us needing to switch on its type.
 	m := dnsmessage.Message{
