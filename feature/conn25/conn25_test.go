@@ -2279,24 +2279,23 @@ func TestMapDNSResponseDropsUnhandledTypes(t *testing.T) {
 	}}, arbitraryPools, []string{})
 	cfg := mustConfig(t, sn)
 
-	// Question types not in passThroughQuestionTypes get an empty answer
-	// section, whatever the upstream said.
 	unhandled := []struct {
-		name string
 		typ  dnsmessage.Type
 		body dnsmessage.ResourceBody
 	}{
-		{"OPT", dnsmessage.TypeOPT, &dnsmessage.OPTResource{}},
-		{"SVCB", dnsmessage.TypeSVCB, &dnsmessage.SVCBResource{Priority: 1, Target: dnsMessageName}},
-
+		{dnsmessage.TypeNS, &dnsmessage.NSResource{NS: dnsMessageName}},
+		{dnsmessage.TypeCNAME, &dnsmessage.CNAMEResource{CNAME: dnsMessageName}},
+		{dnsmessage.TypeSOA, &dnsmessage.SOAResource{NS: dnsMessageName, MBox: dnsMessageName, Serial: 1}},
+		{dnsmessage.TypePTR, &dnsmessage.PTRResource{PTR: dnsMessageName}},
+		{dnsmessage.TypeOPT, &dnsmessage.OPTResource{}},
+		{dnsmessage.TypeSVCB, &dnsmessage.SVCBResource{Priority: 1, Target: dnsMessageName}},
 		// An ANY question can be answered with address records, so it is not written through either
-		{"ANY", dnsmessage.TypeALL, &dnsmessage.AResource{A: [4]byte{1, 2, 3, 4}}},
-
+		{dnsmessage.TypeALL, &dnsmessage.AResource{A: [4]byte{1, 2, 3, 4}}},
 		// An RR type we've never looked at fails closed rather than being written through.
-		{"unknown", dnsmessage.Type(1234), &dnsmessage.UnknownResource{Type: dnsmessage.Type(1234), Data: []byte{1, 2, 3}}},
+		{dnsmessage.Type(1234), &dnsmessage.UnknownResource{Type: dnsmessage.Type(1234), Data: []byte{1, 2, 3}}},
 	}
 	for _, tt := range unhandled {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.typ.String(), func(t *testing.T) {
 			answerType := tt.typ
 			if tt.typ == dnsmessage.TypeALL {
 				answerType = dnsmessage.TypeA
@@ -2342,13 +2341,10 @@ func TestMapDNSResponseWritesThroughNonAddressTypes(t *testing.T) {
 		typ  dnsmessage.Type
 		body dnsmessage.ResourceBody
 	}{
-		{"CNAME", dnsmessage.TypeCNAME, &dnsmessage.CNAMEResource{CNAME: targetName}},
 		{"MX", dnsmessage.TypeMX, &dnsmessage.MXResource{Pref: 10, MX: targetName}},
-		{"NS", dnsmessage.TypeNS, &dnsmessage.NSResource{NS: targetName}},
-		{"PTR", dnsmessage.TypePTR, &dnsmessage.PTRResource{PTR: targetName}},
-		{"SOA", dnsmessage.TypeSOA, &dnsmessage.SOAResource{NS: targetName, MBox: targetName, Serial: 1, MinTTL: 60}},
-		{"SRV", dnsmessage.TypeSRV, &dnsmessage.SRVResource{Priority: 1, Weight: 1, Port: 443, Target: targetName}},
 		{"TXT", dnsmessage.TypeTXT, &dnsmessage.TXTResource{TXT: []string{"hello"}}},
+		{"SRV", dnsmessage.TypeSRV, &dnsmessage.SRVResource{Priority: 1, Weight: 1, Port: 443, Target: targetName}},
+		{"NAPTR", dnsmessage.Type(35), &dnsmessage.UnknownResource{Type: dnsmessage.Type(35), Data: []byte{1, 2, 3}}},
 	}
 	for _, tt := range writtenThrough {
 		t.Run(tt.name, func(t *testing.T) {

@@ -1222,16 +1222,13 @@ func (c *Conn25) mapDNSResponse(buf []byte) []byte {
 
 // Question types whose upstream answers we write through instead of rewriting or dropping them.
 var passThroughQuestionTypes = set.Of(
-	// Types whose RDATA is a name, since a name is indirection client has to resolve it again
-	dnsmessage.TypeCNAME,
+	// Types used for Email traffic.
 	dnsmessage.TypeMX,
-	dnsmessage.TypeNS,
-	dnsmessage.TypePTR,
-	dnsmessage.TypeSRV,
-
-	// Types whose RDATA is neither a name nor an address can't affect routing at all.
-	dnsmessage.TypeSOA,
 	dnsmessage.TypeTXT,
+
+	// Types used for VOIP traffic.
+	dnsmessage.TypeSRV,
+	dnsmessage.Type(35), // NAPTR
 )
 
 // passThroughResponse writes through the answers of a DNS response for a
