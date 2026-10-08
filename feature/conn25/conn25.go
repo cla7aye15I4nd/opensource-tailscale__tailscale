@@ -1042,21 +1042,29 @@ func (c *Conn25) mapDNSResponse(buf []byte) []byte {
 	// There is guaranteed to be at least one matching app, so just take the first one for now
 	appName := appNames[0]
 
-	// Now we know this is a DNS response for a domain we route via a connector.
-	// What we put in the answer section depends on the question type,
-	// and falls into three cases.
+	// Now we know this is a DNS response for a domain we route via a connector, but here lies
+	// an uneasy tension, as users are going to have their DNS results messed with. The goal is to
+	// a) make conn25 work, b) not to fail in an unexpected way, c) not to break user's apps like email
+	// with unrelated DNS interaction. As such, we must decide what to do with DNS responses
+	// that are not for record types we really care about.
 	//
-	// 1. Rewrite. A and AAAA answers are replaced with magic IPs, and HTTPS
-	//    answers have their ipv4hint/ipv6hint SvcParams stripped.
+	// What we put in the answer section depends on the question type, and falls into three cases.
 	//
-	//    These are the only records that could otherwise let the client reach
-	//    the destination without transiting the connector, because they are the
-	//    only ones whose RDATA holds an IP address literal.
+	// 1. Rewrite records that are fundamental to making conn25 work. A and AAAA answers are
+	//    replaced with magic IPs, and HTTPS answers have their ipv4hint/ipv6hint SvcParams
+	//    stripped. These are the only records that could otherwise let the client reach
+	//    the destination without transiting the connector, because they are the only ones
+	//    whose RDATA holds an IP address literal.
 	//
-	// 2. Pass through, for the question types in passThroughQuestionTypes, as
-	//    the answers cannot be used to bypass connector.
+	// 2. Write through unrelated record types that seem unrelated to conn25, to do our best not
+	//    to affect these other uses. If this decision causes problems in the future, it could be a
+	//    reasonable decision to not write through anything. [passThroughQuestionTypes] contains
+	//    the list of question types that falls into this category.
 	//
 	// 3. Drop, i.e. an empty answer section, for everything else.
+	//
+	// In every case we write the questions through as they are, and we never
+	// write through the authority or additional sections
 
 	// Question Type HTTPS
 	if question.Type == dnsmessage.TypeHTTPS {
