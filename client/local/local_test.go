@@ -112,6 +112,36 @@ func TestUserDialSelf(t *testing.T) {
 	}
 }
 
+func TestEffectivePolicyForCurrentUserUsesUnscopedEndpoint(t *testing.T) {
+	nw := nettest.GetNetwork(t)
+
+	var gotMethod, gotPath string
+	ts := nettest.NewHTTPServer(nw, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		gotPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{}`))
+	}))
+	defer ts.Close()
+
+	lc := &Client{
+		Dial: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return nw.Dial(ctx, network, ts.Listener.Addr().String())
+		},
+	}
+
+	if _, err := lc.ReloadEffectivePolicyForCurrentUser(context.Background()); err != nil {
+		t.Fatalf("ReloadEffectivePolicyForCurrentUser: %v", err)
+	}
+
+	if gotMethod != http.MethodPost {
+		t.Errorf("method = %q, want %q", gotMethod, http.MethodPost)
+	}
+	if gotPath != "/localapi/v0/policy/" {
+		t.Errorf("path = %q, want %q", gotPath, "/localapi/v0/policy/")
+	}
+}
+
 func TestDeps(t *testing.T) {
 	deptest.DepChecker{
 		BadDeps: map[string]string{
